@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Results</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .top-candidate { background-color: #fff8dc !important; font-weight: bold; }
+        .badge { font-size: 18px; margin-left: 6px; }
+        .summary-box {
+            background-color: #f0f8ff;
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        .summary-box h2 { margin-top: 0; color: #333; }
+        .summary-box ol { margin: 0; padding-left: 20px; }
+        .button-group { margin-top: 20px; }
+        .button-group button { margin-right: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Candidate Rankings</h1>
+
+    <p style="color: green; font-weight: bold;">✅ {{ count }} resumes processed successfully</p>
+    <p style="color: #555; font-style: italic;">Processed on {{ timestamp }}</p>
+
+    <div class="summary-box">
+        <h2>Top 3 Candidates</h2>
+        <ol>
+            {% for result in results[:3] %}
+                <li>
+                    {{ result.filename }}
+                    {% if loop.first %}
+                        <span class="badge">🏆</span>
+                    {% endif %}
+                    — Final Score: {{ result.scores.final }}%
+                </li>
+            {% endfor %}
+        </ol>
+    </div>
+
+    <table>
+        <tr>
+            <th>Candidate</th>
+            <th>Skills Score</th>
+            <th>Experience Score</th>
+            <th>Education Score</th>
+            <th>Semantic Score</th>
+            <th>Final Score</th>
+        </tr>
+        {% for result in results %}
+        <tr class="{% if loop.first %}top-candidate{% endif %}">
+            <td>
+                {{ result.filename }}
+                {% if loop.first %}
+                    <span class="badge">🏆</span>
+                {% endif %}
+            </td>
+            <td>{{ result.scores.skills }}%</td>
+            <td>{{ result.scores.experience }}%</td>
+            <td>{{ result.scores.education }}%</td>
+            <td>{{ result.scores.semantic }}%</td>
+            <td><strong>{{ result.scores.final }}%</strong></td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <div class="button-group">
+        <a href="{{ url_for('download') }}"><button>Download All Candidates (CSV)</button></a>
+        <a href="{{ url_for('download_top3') }}"><button>Download Top 3 Only (CSV)</button></a>
+    </div>
+
+    <br><br>
+    <form action="{{ url_for('index') }}" method="get">
+        <input type="hidden" name="job_description" value="{{ job_description }}">
+        <button type="submit">Back to Job Description</button>
+    </form>
+</body>
+</html>

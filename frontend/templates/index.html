@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Resume Screener</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Upload Resumes</h1>
+    <form id="uploadForm" action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
+        <label for="job_description">Job Description:</label><br>
+        <textarea name="job_description" rows="6" cols="60" placeholder="Paste job description here...">{{ job_description if job_description else "" }}</textarea>
+        <br><br>
+        <input type="file" name="resumes" accept=".pdf,.docx" multiple>
+        <button type="submit">Upload</button>
+        <button type="reset">Clear JD</button>
+    </form>
+
+    <div id="spinner">Processing resumes... Please wait.</div>
+
+    <script>
+        const form = document.getElementById("uploadForm");
+        const spinner = document.getElementById("spinner");
+
+        form.addEventListener("submit", function() {
+            spinner.style.display = "block";
+        });
+    </script>
+</body>
+</html>
