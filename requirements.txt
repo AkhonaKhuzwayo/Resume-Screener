@@ -13,3 +13,4 @@ numpy==2.4.2             # Often needed with pandas
 # For resume parsing (if you're using ML)
 scikit-learn==1.8.0      # For any ML features
 joblib==1.5.3            # For saving/loading models
+gunicorn==21.2.0         # For production deployment

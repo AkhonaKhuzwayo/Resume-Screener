@@ -1,5 +1,8 @@
 import sys
 import os
+import tempfile  # Added for Vercel's writable directory
+from pathlib import Path  # Added for better path handling
+
 # Add the project root directory to Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -9,11 +12,28 @@ from datetime import datetime
 from backend.resume_parser import ResumeParser
 
 app = Flask(__name__,
-            template_folder='frontend/templates',  # Templates are in frontend/templates
-            static_folder='frontend/static')  # Static files are in frontend/static
+            template_folder='frontend/templates',
+            static_folder='frontend/static')
 parser = ResumeParser()
 
-UPLOAD_FOLDER = "data/resumes"
+# Check if running on Vercel
+IS_VERCEL = os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV')
+
+# Configure paths based on environment
+if IS_VERCEL:
+    # Use /tmp for writable files on Vercel (serverless environment)
+    BASE_DIR = '/tmp'
+    UPLOAD_FOLDER = os.path.join(BASE_DIR, 'data', 'resumes')
+    CSV_PATH = os.path.join(BASE_DIR, 'results.csv')
+    TOP3_PATH = os.path.join(BASE_DIR, 'top3_results.csv')
+else:
+    # Local development paths
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    UPLOAD_FOLDER = os.path.join(BASE_DIR, 'data', 'resumes')
+    CSV_PATH = os.path.join(BASE_DIR, 'results.csv')
+    TOP3_PATH = os.path.join(BASE_DIR, 'top3_results.csv')
+
+# Create upload directory if it doesn't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.route("/")
@@ -36,17 +56,28 @@ def upload():
     for file in files:
         if file.filename == "":
             continue
-        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        
+        # Secure filename to prevent path traversal
+        filename = os.path.basename(file.filename)
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
         file.save(file_path)
-        scores = parser.process_resume(file_path, job_description)
-        if scores:
-            results.append({"filename": file.filename, "scores": scores})
+        
+        try:
+            scores = parser.process_resume(file_path, job_description)
+            if scores:
+                results.append({"filename": filename, "scores": scores})
+        except Exception as e:
+            # Log error but continue processing other files
+            print(f"Error processing {filename}: {str(e)}")
+            continue
+
+    if not results:
+        return "No resumes could be processed successfully", 400
 
     results.sort(key=lambda x: x["scores"]["final"], reverse=True)
 
     # Save full results
-    csv_path = "results.csv"
-    with open(csv_path, "w", newline="", encoding="utf-8") as csvfile:
+    with open(CSV_PATH, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(["Candidate", "Skills", "Experience", "Education", "Semantic", "Final"])
         for r in results:
@@ -54,8 +85,7 @@ def upload():
             writer.writerow([r["filename"], s["skills"], s["experience"], s["education"], s["semantic"], s["final"]])
 
     # Save Top 3 results
-    top3_path = "top3_results.csv"
-    with open(top3_path, "w", newline="", encoding="utf-8") as csvfile:
+    with open(TOP3_PATH, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(["Candidate", "Skills", "Experience", "Education", "Semantic", "Final"])
         for r in results[:3]:
@@ -67,11 +97,23 @@ def upload():
 
 @app.route("/download")
 def download():
-    return send_file("results.csv", as_attachment=True)
+    """Download all results"""
+    if not os.path.exists(CSV_PATH):
+        return "No results file found", 404
+    return send_file(CSV_PATH, as_attachment=True, download_name="results.csv")
 
 @app.route("/download_top3")
 def download_top3():
-    return send_file("top3_results.csv", as_attachment=True)
+    """Download top 3 results"""
+    if not os.path.exists(TOP3_PATH):
+        return "No top 3 results file found", 404
+    return send_file(TOP3_PATH, as_attachment=True, download_name="top3_results.csv")
 
+# Health check endpoint for Vercel
+@app.route("/api/health")
+def health():
+    return {"status": "healthy"}, 200
+
+# This is ignored on Vercel but used for local development
 if __name__ == "__main__":
     app.run(debug=True)
