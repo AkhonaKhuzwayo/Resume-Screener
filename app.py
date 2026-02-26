@@ -1,14 +1,16 @@
 import sys
 import os
 # Add the project root directory to Python path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from flask import Flask, render_template, request, send_file
 import csv
 from datetime import datetime
 from backend.resume_parser import ResumeParser
 
-app = Flask(__name__)
+app = Flask(__name__,
+            template_folder='frontend/templates',  # Templates are in frontend/templates
+            static_folder='frontend/static')  # Static files are in frontend/static
 parser = ResumeParser()
 
 UPLOAD_FOLDER = "data/resumes"
